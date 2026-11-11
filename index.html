@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bahasa Mall Odyssey 🐱📜</title>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    <style>
+        :root {
+            --shinchan-red: #FF4B4B;
+            --shinchan-yellow: #FFD93D;
+            --theme-color: #00d2ff;
+            --theme-door-1: #3498db;
+            --theme-door-2: #1d6fa5;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Jua', sans-serif;
+            margin: 0; min-height: 100vh; overflow-x: hidden;
+            background: #0f2027; color: #fff;
+        }
+
+        /* --- LATAR BELAKANG DINAMIK --- */
+        .bg-canvas {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            overflow: hidden;
+        }
+
+        .particle {
+            position: absolute; background: rgba(255, 255, 255, 0.4); border-radius: 50%;
+            pointer-events: none; animation: floatParticle 8s infinite linear;
+        }
+
+        @keyframes floatParticle {
+            0% { transform: translateY(100vh) scale(0.5); opacity: 0; }
+            50% { opacity: 0.8; }
+            100% { transform: translateY(-10vh) scale(1.2); opacity: 0; }
+        }
+
+        /* --- MUKA DEPAN INTERAKTIF (MAIN MENU) --- */
+        #main-menu {
+            position: fixed; inset: 0;
+            background: radial-gradient(ellipse at bottom, #1B2735 0%, #090A0F 100%);
+            z-index: 1000; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; padding: 20px;
+        }
+
+        .menu-title {
+            font-size: clamp(2.2rem, 6vw, 3.8rem);
+            color: var(--shinchan-yellow); text-shadow: 4px 4px 0 var(--shinchan-red);
+            text-align: center; margin-bottom: 0.8rem;
+            animation: titleWobble 3s infinite ease-in-out;
+        }
+
+        @keyframes titleWobble {
+            0%, 100% { transform: rotate(-1deg) scale(1); }
+            50% { transform: rotate(1deg) scale(1.03); }
+        }
+
+        .cat-box-menu {
+            display: flex; flex-direction: column; align-items: center; margin-bottom: 15px;
+        }
+
+        .speech-bubble {
+            background: #fff; color: #333; padding: 10px 18px; border-radius: 20px;
+            font-size: 1rem; font-weight: bold; position: relative; margin-bottom: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3); border: 3px solid var(--shinchan-yellow);
+        }
+        .speech-bubble::after {
+            content: ''; position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%);
+            border-width: 10px 10px 0; border-style: solid; border-color: #fff transparent;
+        }
+
+        .cat-gif-menu {
+            width: 110px; height: 110px; object-fit: contain;
+        }
+
+        /* MANUAL FLIP CARD 3D */
+        .manual-container {
+            perspective: 1000px; width: min(340px, 90vw); height: 180px; margin-bottom: 20px; cursor: pointer;
+        }
+        .manual-card {
+            width: 100%; height: 100%; position: relative;
+            transform-style: preserve-3d; transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .manual-container.flipped .manual-card {
+            transform: rotateY(180deg);
+        }
+        .manual-front, .manual-back {
+            position: absolute; inset: 0; backface-visibility: hidden;
+            border-radius: 18px; padding: 15px; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; text-align: center;
+            border: 4px solid #fff; box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+        .manual-front {
+            background: linear-gradient(135deg, #ffffff, #f1f5f9); color: #1e293b;
+        }
+        .manual-back {
+            background: linear-gradient(135deg, #fff3bf, #ffe066); color: #d9480f;
+            transform: rotateY(180deg);
+        }
+
+        .btn-start {
+            padding: 16px 50px; font-size: 1.5rem; background: var(--shinchan-yellow);
+            color: var(--shinchan-red); border-radius: 50px; cursor: pointer;
+            font-weight: bold; border: 4px solid white; box-shadow: 0 8px 0 #e6c232;
+            transition: 0.2s; font-family: 'Jua', sans-serif;
+            animation: pulseBtn 1.8s infinite ease-in-out;
+        }
+        @keyframes pulseBtn {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.06); box-shadow: 0 12px 25px rgba(255, 217, 61, 0.5); }
+        }
+        .btn-start:hover { transform: translateY(-3px) scale(1.08); background: #fff; }
+
+        /* --- STYLES PERMAINAN & LIF --- */
+        #game-scene {
+            display: none; min-height: 100vh; justify-content: center; align-items: center; padding: 20px 12px;
+        }
+
+        #elevator-frame {
+            width: min(900px, 100%);
+            background: rgba(255, 255, 255, 0.1); border: 4px solid rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(15px); border-radius: 30px; position: relative; display: flex;
+            transition: border-color 0.8s ease;
+        }
+
+        .floor-indicator {
+            position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
+            background: #000; padding: 5px 25px; border: 3px solid var(--theme-color);
+            color: var(--theme-color); font-size: 20px; font-weight: bold; border-radius: 10px;
+            box-shadow: 0 0 15px var(--theme-color); display: flex; gap: 20px; z-index: 10;
+            transition: all 0.8s ease;
+        }
+
+        .control-panel {
+            width: 100px; background: rgba(0, 0, 0, 0.7); position: absolute; right: 20px;
+            top: 50%; transform: translateY(-50%); border-radius: 20px; border: 2px solid #555;
+            display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 15px 10px; z-index: 10;
+        }
+
+        .panel-btn {
+            width: 50px; height: 50px; background: rgba(255,255,255,0.1); border-radius: 50%;
+            border: 2px solid #fff; color: #fff; display: flex; justify-content: center;
+            align-items: center; font-weight: bold; font-size: 16px; cursor: pointer; transition: 0.3s;
+        }
+
+        .panel-btn.active { 
+            background: var(--theme-color); box-shadow: 0 0 12px var(--theme-color); color: #000;
+        }
+
+        .btn-call-main {
+            width: 70px; height: 50px; background: #f9d423; border: 2px solid white;
+            border-radius: 10px; cursor: pointer; font-weight: bold; color: #333; font-family: 'Jua', sans-serif;
+            box-shadow: 0 4px 0 #d97706; transition: 0.2s;
+        }
+
+        #elevator-interior {
+            flex: 1; margin: 65px 130px 20px 20px; background: #222; position: relative;
+            overflow: hidden; border-radius: 20px; border: 6px solid #1a1a1a; min-height: 520px;
+        }
+
+        #elevator-car {
+            position: absolute; inset: 0; background: #f8f9fa;
+            display: flex; flex-direction: column; color: #333;
+            transition: transform 1.2s cubic-bezier(0.45, 0.05, 0.55, 0.95);
+        }
+
+        .lift-scroll-up { transform: translateY(-100%); }
+        .lift-prepare-up { transform: translateY(100%); transition: none !important; }
+
+        .door-container { 
+            position: absolute; inset: 0; display: flex; z-index: 100; transition: visibility 0s 1s; 
+        }
+        
+        .door {
+            width: 50%; height: 100%; 
+            background: linear-gradient(135deg, var(--theme-door-1), var(--theme-door-2));
+            border: 3px solid rgba(0,0,0,0.3); display: flex; justify-content: center; align-items: center;
+            font-size: 60px; transition: transform 1.2s cubic-bezier(0.7, 0, 0.3, 1), background 0.8s ease;
+            box-shadow: inset 0 0 30px rgba(0,0,0,0.4);
+        }
+
+        .open .door.left { transform: translateX(-100%); }
+        .open .door.right { transform: translateX(100%); }
+        .open.door-container { visibility: hidden; }
+
+        .content { padding: 20px; overflow-y: auto; height: 100%; display: flex; flex-direction: column; }
+
+        .lift-passenger-area {
+            display: flex; align-items: center; justify-content: center; gap: 15px;
+            background: #fff3bf; border-radius: 15px; padding: 12px 20px;
+            margin-bottom: 15px; border: 3px dashed #ffd43b; box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+
+        .cat-in-lift {
+            width: 80px; height: 80px; object-fit: contain; animation: catBounce 2s infinite ease-in-out;
+        }
+
+        @keyframes catBounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+
+        .cat-dialog { color: #d9480f; font-weight: bold; font-size: 1rem; }
+
+        .quiz-card {
+            background: #fff; border-radius: 15px; padding: 15px; margin-bottom: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1); border-left: 6px solid var(--theme-color);
+            transition: border-color 0.8s ease;
+        }
+
+        .opt-btn {
+            display: block; width: 100%; padding: 10px; margin: 6px 0; text-align: left;
+            background: #f0f4f8; border: 2px solid #cbd5e1; border-radius: 8px; cursor: pointer;
+            font-family: 'Jua', sans-serif; font-size: 1rem; transition: 0.2s;
+        }
+
+        .opt-btn:hover { background: #e2e8f0; }
+        .opt-btn.correct { background: #4ade80 !important; color: white; border-color: #22c55e; }
+        .opt-btn.wrong { background: #f87171 !important; color: white; border-color: #ef4444; }
+
+        .badge-bar { display: flex; gap: 10px; margin-top: 5px; }
+        .badge { font-size: 24px; opacity: 0.3; filter: grayscale(100%); transition: 0.3s; }
+        .badge.unlocked { opacity: 1; filter: grayscale(0%); transform: scale(1.2); }
+
+        .btn-next-level {
+            display: none; padding: 14px 30px; background: #22c55e; color: white;
+            border: none; border-radius: 25px; font-size: 1.1rem; cursor: pointer;
+            font-family: 'Jua', sans-serif; margin: 15px auto 10px; box-shadow: 0 4px 0 #15803d; transition: 0.2s;
+        }
+
+        .theme-lvl-1 { --theme-color: #00d2ff; --theme-door-1: #3498db; --theme-door-2: #1d6fa5; }
+        .theme-lvl-2 { --theme-color: #f39c12; --theme-door-1: #f1c40f; --theme-door-2: #d35400; }
+        .theme-lvl-3 { --theme-color: #2ecc71; --theme-door-1: #27ae60; --theme-door-2: #1e8449; }
+        .theme-lvl-4 { --theme-color: #9b59b6; --theme-door-1: #8e44ad; --theme-door-2: #5b2c6f; }
+    </style>
+</head>
+<body class="theme-lvl-1">
+
+<div class="bg-canvas" id="particles-bg"></div>
+
+<!-- ELEMEN AUDIO TEMPATAN -->
+<audio id="bgm" src="bgm_mall.mp3" loop></audio>
+<audio id="sfx-click" src="click_sound.mp3"></audio>
+<audio id="sfx-elevator" src="elevator_move.mp3"></audio>
+<audio id="sfx-ding" src="lift_ding.mp3"></audio>
+
+<!-- BUTANG KAWALAN MUZIK (BGM TOGGLE) -->
+<button id="music-toggle" onclick="toggleBGM()" style="position: fixed; top: 15px; right: 15px; z-index: 2000; padding: 10px 18px; font-family: 'Jua', sans-serif; font-size: 0.95rem; background: rgba(255,255,255,0.25); color: #fff; border: 2px solid #fff; border-radius: 30px; cursor: pointer; backdrop-filter: blur(10px); box-shadow: 0 4px 10px rgba(0,0,0,0.3); transition: 0.3s;">🎵 Muzik: MATI</button>
+
+<!-- MUKA DEPAN INTERAKTIF -->
+<div id="main-menu">
+    <div class="menu-title">🐱 Bahasa Mall Odyssey 📜</div>
+    
+    <div class="cat-box-menu">
+        <div class="speech-bubble">Jom bantu MiaoMiao naik ke Level 4-A Mall Bahasa! 🐾</div>
+        <img src="cat_helper.gif" alt="MiaoMiao" class="cat-gif-menu">
+    </div>
+
+    <!-- KAD MANUAL 3D FLIP -->
+    <div class="manual-container" onclick="toggleManualFlip(this)">
+        <div class="manual-card">
+            <div class="manual-front">
+                <h4 style="margin:0 0 8px 0; color:var(--shinchan-red);">📖 Manual Arahan (Halaman 1/2)</h4>
+                <p style="margin:0; font-size:0.9rem;">1. Tekan MULA PENGEMBARAAN.<br>2. Tekan BUKA 🚪 pada panel lif.<br>3. Jawab 5 soalan pada setiap level.</p>
+                <small style="margin-top:auto; color:#888;">(Sentuh kad ini untuk putar ➔)</small>
+            </div>
+            <div class="manual-back">
+                <h4 style="margin:0 0 8px 0;">📖 Peraturan Markah (Halaman 2/2)</h4>
+                <p style="margin:0; font-size:0.9rem;">★ Jawapan betul: +10 Markah.<br>⚠️ Jawapan salah: Tolak <b>-1 Markah</b>.<br>💡 Anda boleh cuba lagi soalan yang salah!</p>
+                <small style="margin-top:auto; color:#d9480f;">(Sentuh kad ini untuk putar balik ↺)</small>
+            </div>
+        </div>
+    </div>
+
+    <button class="btn-start" onclick="startGame()">MULA PENGEMBARAAN 🚀</button>
+</div>
+
+<!-- PERMAINAN & LIF SCENE -->
+<div id="game-scene">
+    <div id="elevator-frame">
+        <div class="floor-indicator">
+            <span>ARAS: <b id="lbl-floor">1-A</b></span>
+            <span>MARKAH: <b id="lbl-score">0</b></span>
+        </div>
+
+        <div class="control-panel">
+            <div class="panel-btn" id="btn-f4">4-A</div>
+            <div class="panel-btn" id="btn-f3">3-A</div>
+            <div class="panel-btn" id="btn-f2">2-A</div>
+            <div class="panel-btn active" id="btn-f1">1-A</div>
+            <button class="btn-call-main" onclick="openDoor()">BUKA 🚪</button>
+        </div>
+
+        <div id="elevator-interior">
+            <div id="elevator-car">
+                <div class="door-container" id="doors">
+                    <div class="door left">⚙️</div>
+                    <div class="door right">📜</div>
+                </div>
+
+                <div class="content" id="lift-content">
+                    <div class="lift-passenger-area">
+                        <img src="cat_helper.gif" alt="MiaoMiao di dalam lif" class="cat-in-lift">
+                        <div>
+                            <div class="cat-dialog" id="cat-msg">Tekan 'BUKA 🚪' pada panel kawalan lif dulu!</div>
+                            <div class="badge-bar">
+                                <span class="badge" id="badge-1">🏅</span>
+                                <span class="badge" id="badge-2">🏅</span>
+                                <span class="badge" id="badge-3">🏅</span>
+                                <span class="badge" id="badge-4">🏅</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3 id="level-title" style="margin: 5px 0 15px; color: #1e293b; text-align: center;">-</h3>
+                    <div id="quiz-container"></div>
+
+                    <button class="btn-next-level" id="btn-next" onclick="finishAndGoNext()">SELESAI & NAIK LEVEL 🚀</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // DIALOG MIAOMIAO
+    const miaomiaoDialogs = [
+        "Yeahh dah sampai Level 1! Jom kita mulakan pengembaraan Bahasa Melayu! 😸✨",
+        "AHAH, pandai niii! Waaahhh, saya nak lagi ke Level 3 !!! 🚀🐾",
+        "HEBATNYA AMBOI! 🐾 Tinggal sikit lagi ni... Jom pecut sama-sama ke Level 4 pulak! 🏆✨",
+        "PERGHHH UNSTOPPABLE! 🔥 Ini aras terakhir tau! Buktikan yang kita memang Pakar Bahasa Melayu! 👑🏆"
+    ];
+
+    // PEMANCURAN AUDIO & SFX
+    const bgm = document.getElementById('bgm');
+    const sfxClick = document.getElementById('sfx-click');
+    const sfxElevator = document.getElementById('sfx-elevator');
+    const sfxDing = document.getElementById('sfx-ding');
+
+    function playSound(audioEl) {
+        if (audioEl) {
+            audioEl.currentTime = 0;
+            audioEl.play().catch(() => {});
+        }
+    }
+
+    function toggleBGM() {
+        const btn = document.getElementById('music-toggle');
+        if (bgm.paused) {
+            bgm.play().then(() => {
+                btn.innerText = '🎵 Muzik: HIDUP';
+                btn.style.background = 'rgba(74, 222, 128, 0.4)';
+            }).catch(() => {});
+        } else {
+            bgm.pause();
+            btn.innerText = '🎵 Muzik: MATI';
+            btn.style.background = 'rgba(255,255,255,0.25)';
+        }
+    }
+
+    const questionsData = [
+        {
+            levelTitle: "LEVEL 1-A: Kedudukan Bahasa Kebangsaan & Bahasa Lain",
+            themeClass: "theme-lvl-1",
+            questions: [
+                { q: "1. Apakah kedudukan Bahasa Melayu mengikut Akta Bahasa Kebangsaan 1963/67?", opts: ["A. Bahasa rasmi negara", "B. Bahasa kedua negara", "C. Bahasa pilihan tempatan"], ans: 0 },
+                { q: "2. Akta manakah yang diwartakan untuk memartabatkan Bahasa Melayu sebagai bahasa ilmu?", opts: ["A. Akta Jalan Raya 1987", "B. Akta Pendidikan 1996 / Akta Pelajaran 1961", "C. Akta Hak Cipta 1987"], ans: 1 },
+                { q: "3. Mengapakah masyarakat pelbagai kaum boleh menggunakan Bahasa Mandarin, Tamil atau Inggeris?", opts: ["A. Digunakan untuk komunikasi harian", "B. Bahasa Melayu diharamkan", "C. Hanya untuk urusan mahkamah"], ans: 0 },
+                { q: "4. Apakah peranan Bahasa Melayu dalam Perlembagaan Persekutuan?", opts: ["A. Bahasa kebangsaan dan bahasa rasmi", "B. Bahasa perniagaan antarabangsa sahaja", "C. Bahasa dialek tempatan"], ans: 0 },
+                { q: "5. Mengapakah penguasaan bahasa kebangsaan penting bagi semua kaum di Malaysia?", opts: ["A. Memupuk perpaduan dan jati diri negara", "B. Untuk menguasai bahasa asing", "C. Sekadar memenuhi syarat sekolah"], ans: 0 }
+            ]
+        },
+        {
+            levelTitle: "LEVEL 2-A: Peranan Bahasa Kebangsaan",
+            themeClass: "theme-lvl-2",
+            questions: [
+                { q: "1. Mengapakah Bahasa Kebangsaan dianggap sebagai 'Lambang Jati Diri'?", opts: ["A. Menjadi identiti rakyat Malaysia di persada dunia", "B. Kerana ia sukar dipelajari", "C. Hanya digunakan di kampung"], ans: 0 },
+                { q: "2. Bahasa kebangsaan digunakan dalam surat-menyurat dan mesyuarat rasmi kerajaan. Ini merujuk kepada peranan sebagai...", opts: ["A. Bahasa Pentadbiran", "B. Bahasa Sukan", "C. Bahasa Santai"], ans: 0 },
+                { q: "3. Karya seperti pantun, syair, dan novel menggunakan bahasa kebangsaan sebagai...", opts: ["A. Bahasa Persuratan", "B. Bahasa Pasar", "C. Bahasa Kod"], ans: 0 },
+                { q: "4. Bahasa Melayu menjadi perantara dalam urusan rasmi mahkamah. Ini adalah peranan sebagai...", opts: ["A. Bahasa Undang-undang", "B. Bahasa Ekonomi", "C. Bahasa Hiburan"], ans: 0 },
+                { q: "5. Antara berikut, yang manakah fungsi Bahasa Melayu sebagai 'Asas Pembinaan Negara'?", opts: ["A. Menjadi bahasa komunikasi antara pelbagai kaum", "B. Digunakan untuk perniagaan eksport sahaja", "C. Digunakan oleh satu kaum sahaja"], ans: 0 }
+            ]
+        },
+        {
+            levelTitle: "LEVEL 3-A: Institusi Mempertahankan Bahasa Kebangsaan",
+            themeClass: "theme-lvl-3",
+            questions: [
+                { q: "1. Apakah institusi yang ditubuhkan pada tahun 1956 untuk membina dan memperkaya bahasa kebangsaan?", opts: ["A. Dewan Bahasa dan Pustaka (DBP)", "B. Universiti Malaya", "C. Perpustakaan Negara"], ans: 0 },
+                { q: "2. Penyata manakah yang menjadikan bahasa kebangsaan sebagai bahasa pengantar di sekolah kebangsaan pada tahun 1956?", opts: ["A. Penyata Razak 1956", "B. Laporan Barnes 1950", "C. Penyata Rahman Talib 1960"], ans: 0 },
+                { q: "3. Universiti Kebangsaan Malaysia (UKM) ditubuhkan pada tahun 1970 untuk...", opts: ["A. Memartabatkan Bahasa Melayu sebagai bahasa ilmu", "B. Mengajar bahasa asing sahaja", "C. Menjadi pusat sukan antarabangsa"], ans: 0 },
+                { q: "4. Bulan Bahasa Kebangsaan disambut pada bulan apa setiap tahun?", opts: ["A. Bulan Oktober", "B. Bulan Januari", "C. Bulan Disember"], ans: 0 },
+                { q: "5. Apakah fokus utama dasar MBMMBI yang diperkenalkan pada tahun 2012?", opts: ["A. Memartabatkan Bahasa Malaysia, Memperkukuh Bahasa Inggeris", "B. Membuang Bahasa Inggeris terus", "C. Menggantikan bahasa kebangsaan"], ans: 0 }
+            ]
+        },
+        {
+            levelTitle: "LEVEL 4-A: Cabaran Penggunaan Bahasa Melayu",
+            themeClass: "theme-lvl-4",
+            questions: [
+                { q: "1. Apakah yang dimaksudkan dengan 'Bahasa Rojak'?", opts: ["A. Bahasa yang bercampur aduk kata-katanya", "B. Bahasa resipi makanan", "C. Bahasa istana kuno"], ans: 0 },
+                { q: "2. Mengapakah bidang Teknologi Maklumat menjadi cabaran kepada Bahasa Melayu?", opts: ["A. Kebanyakan alat & aplikasi guna Bahasa Inggeris", "B. Komputer tidak menyokong Bahasa Melayu", "C. Tiada capaian internet"], ans: 0 },
+                { q: "3. Apakah cabaran utama yang timbul daripada 'Sikap Penutur'?", opts: ["A. Malu atau tiada kesungguhan guna bahasa kebangsaan", "B. Terlalu rajin membaca buku", "C. Suka menulis puisi"], ans: 0 },
+                { q: "4. Apakah peranan penting 'Latar Belakang Keluarga' dalam mengatasi cabaran ini?", opts: ["A. Memberi galakan & tunjuk ajar penggunaan bahasa betul", "B. Membiarkan anak guna bahasa rojak", "C. Memaksa anak belajar bahasa asing sahaja"], ans: 0 },
+                { q: "5. Apakah cabaran bahasa kebangsaan di sekolah?", opts: ["A. Murid cenderung guna dialek/bahasa ibunda semasa belajar", "B. Tiada buku teks dalam Bahasa Melayu", "C. Guru tidak dibenarkan mengajar Bahasa Melayu"], ans: 0 }
+            ]
+        }
+    ];
+
+    let currentLevel = 0;
+    let totalScore = 0;
+    let completedQuestions = 0;
+    let doorsOpen = false;
+
+    // GENERATE ZARAH DINAMIK LATAR BELAKANG
+    function createParticles() {
+        const container = document.getElementById('particles-bg');
+        for(let i = 0; i < 25; i++) {
+            const p = document.createElement('div');
+            p.className = 'particle';
+            const size = Math.random() * 6 + 3;
+            p.style.width = size + 'px'; p.style.height = size + 'px';
+            p.style.left = Math.random() * 100 + '%';
+            p.style.animationDuration = (Math.random() * 6 + 5) + 's';
+            p.style.animationDelay = (Math.random() * 5) + 's';
+            container.appendChild(p);
+        }
+    }
+    createParticles();
+
+    function toggleManualFlip(el) {
+        playSound(sfxClick);
+        el.classList.toggle('flipped');
+    }
+
+    function startGame() {
+        playSound(sfxClick);
+        if (bgm.paused) {
+            toggleBGM();
+        }
+        document.getElementById('main-menu').style.display = 'none';
+        document.getElementById('game-scene').style.display = 'flex';
+        loadLevel(0);
+    }
+
+    function loadLevel(idx, isTransitioning = false) {
+        currentLevel = idx;
+        completedQuestions = 0;
+        doorsOpen = false;
+
+        const car = document.getElementById('elevator-car');
+        document.body.className = questionsData[idx].themeClass;
+
+        document.getElementById('lbl-floor').innerText = (idx + 1) + "-A";
+        document.getElementById('level-title').innerText = questionsData[idx].levelTitle;
+        
+        document.getElementById('doors').classList.remove('open');
+        document.getElementById('btn-next').style.display = 'none';
+        document.getElementById('cat-msg').innerText = "Tekan 'BUKA 🚪' pada panel kawalan lif dulu!";
+
+        const contentDiv = document.getElementById('lift-content');
+        if (contentDiv) contentDiv.scrollTop = 0;
+
+        for (let i = 1; i <= 4; i++) {
+            document.getElementById(`btn-f${i}`).classList.toggle('active', i === (idx + 1));
+        }
+
+        renderQuiz();
+
+        if (isTransitioning) {
+            car.classList.remove('lift-prepare-up', 'lift-scroll-up');
+        }
+    }
+
+    function openDoor() {
+        if (!doorsOpen) {
+            playSound(sfxDing);
+            doorsOpen = true;
+            document.getElementById('doors').classList.add('open');
+            document.getElementById('cat-msg').innerText = miaomiaoDialogs[currentLevel];
+        }
+    }
+
+    function renderQuiz() {
+        const container = document.getElementById('quiz-container');
+        container.innerHTML = '';
+
+        const levelData = questionsData[currentLevel];
+        levelData.questions.forEach((qObj, qIdx) => {
+            const card = document.createElement('div');
+            card.className = 'quiz-card';
+
+            const qText = document.createElement('div');
+            qText.style.fontWeight = 'bold';
+            qText.style.marginBottom = '8px';
+            qText.innerText = qObj.q;
+            card.appendChild(qText);
+
+            qObj.opts.forEach((optText, oIdx) => {
+                const btn = document.createElement('button');
+                btn.className = `opt-btn q-${qIdx}`;
+                btn.innerText = optText;
+                btn.onclick = () => {
+                    playSound(sfxClick);
+                    handleAnswer(qIdx, oIdx, qObj.ans, btn);
+                };
+                card.appendChild(btn);
+            });
+
+            container.appendChild(card);
+        });
+    }
+
+    function handleAnswer(qIdx, selectedIdx, correctIdx, btn) {
+        if (!doorsOpen) {
+            alert("Sila tekan 'BUKA 🚪' pada panel kawalan lif dulu!");
+            return;
+        }
+
+        const buttons = document.querySelectorAll(`.opt-btn.q-${qIdx}`);
+        let alreadyAnsweredCorrectly = false;
+        buttons.forEach(b => { if (b.classList.contains('correct')) alreadyAnsweredCorrectly = true; });
+
+        if (alreadyAnsweredCorrectly) return;
+
+        if (selectedIdx === correctIdx) {
+            btn.classList.add('correct');
+            totalScore += 10;
+            completedQuestions++;
+            document.getElementById('lbl-score').innerText = totalScore;
+            document.getElementById('cat-msg').innerText = "Syabas! Jawapan BETUL! (+10 Markah) 😸✨";
+
+            if (completedQuestions === 5) {
+                document.getElementById('badge-' + (currentLevel + 1)).classList.add('unlocked');
+                document.getElementById('cat-msg').innerText = "HEBAT! Anda selesai Aras " + (currentLevel + 1) + "-A! Tekan 'SELESAI & NAIK LEVEL' di bawah.";
+                document.getElementById('btn-next').style.display = 'block';
+                confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+            }
+        } else {
+            btn.classList.add('wrong');
+            totalScore = Math.max(0, totalScore - 1);
+            document.getElementById('lbl-score').innerText = totalScore;
+            document.getElementById('cat-msg').innerText = "Adoi! Jawapan salah (-1 Markah). Boleh cuba pilih jawapan lain! 😿";
+        }
+    }
+
+    function finishAndGoNext() {
+        playSound(sfxClick);
+        if (currentLevel < 3) {
+            const car = document.getElementById('elevator-car');
+
+            doorsOpen = false;
+            document.getElementById('doors').classList.remove('open');
+            document.getElementById('cat-msg').innerText = "Pintu lif bertutup rapat... Lif sedang bergerak ke Aras " + (currentLevel + 2) + "-A... 🚀";
+            
+            setTimeout(() => {
+                playSound(sfxElevator);
+                car.classList.add('lift-scroll-up');
+
+                setTimeout(() => {
+                    car.classList.add('lift-prepare-up');
+                    void car.offsetWidth;
+                    loadLevel(currentLevel + 1, true);
+                }, 1000);
+            }, 1200);
+        } else {
+            alert("TAHNIAH DUA KALI GANDA! 🎉 Anda telah menamatkan semua 4 Aras Mall Bahasa bersama MiaoMiao dengan cemerlang!");
+            location.reload();
+        }
+    }
+</script>
+
+</body>
+</html>
